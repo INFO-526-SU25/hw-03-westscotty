@@ -1,16 +1,172 @@
 ---
 title: "HW 03"
-author: "INSERT YOUR NAME HERE"
-format:
+author: "Weston Scott"
+format: 
   html:
     embed-resources: true
 toc: true
+editor:
+  render-on-save: true
+execute:
+  warning: false
+# bibliography: references.bib
 ---
+
+```{r library_setup, include=FALSE}
+if (!require("pacman")) 
+    install.packages("pacman")
+
+# Use pacman::p_load to install and load CRAN packages
+pacman::p_load(
+    dplyr,
+    forcats,
+    fs,
+    ggforce,
+    ggimage,
+    ggridges,
+    janitor,
+    lubridate,
+    paste,
+    readr,
+    scales,
+    stringr,
+    tidyverse,
+    viridis
+)
+
+# Handle GitHub package separately
+if (!require("dsbox")) {
+      # Install devtools if not present
+      if (!require("devtools")) 
+          install.packages("devtools")
+devtools::install_github("tidyverse/dsbox")
+      library(dsbox)
+}
+```
+
+```{r set_uniform_displays, include=FALSE}
+ggplot2::theme_set(ggplot2::theme_minimal(base_size = 14))
+options(width = 65)
+
+knitr::opts_chunk$set(
+  fig.width = 7,
+  fig.asp = 0.618,
+  fig.retina = 3,
+  fig.align = "center",
+  dpi = 300
+)
+```
 
 ## 1 - Du Bois challenge.
 
-```{r}
-#| label: label-me-1
+```{r load_data_problem1}
+income <- read.csv("data/income.csv")
+
+income <- income |>
+    mutate(
+        Average_Income = as.integer(Average_Income),
+        ClassLabel = factor(
+            paste0(Class, " | $", 
+                   format(Average_Income, 
+                          big.mark = ",")
+                  ),
+            levels = unique(paste0(Class, " | $", 
+                               format(Average_Income, 
+                                      big.mark = ",")))
+            )
+    ) |>
+
+    pivot_longer(
+        cols = Rent:Other, ## list slice-like syntax to get the ordered columns
+        names_to = "Category", 
+        values_to = "Percent"
+    ) |>
+
+    mutate(
+        Category = factor(Category, 
+                          levels = c("Other", 
+                                     "Tax", 
+                                     "Clothes", 
+                                     "Food", 
+                                     "Rent")),
+        text_color = ifelse(Category == "Rent", 
+                            "white", 
+                            "black")
+    ) |>
+
+    group_by(ClassLabel) |>
+    mutate(pos = cumsum(Percent) - Percent / 2) |>
+    ungroup()
+
+category_colors <- c(
+    Rent = "black",
+    Food = "slateblue4",
+    Clothes = "rosybrown2",
+    Tax = "gray60",
+    Other = "tan"
+)
+
+glimpse(income)
+
+
+```
+
+```{r recreate_plot_problem1}
+du_bois <- ggplot(
+    income, 
+    aes(x = fct_rev(ClassLabel), 
+        y = Percent, 
+        fill = Category)
+    ) +
+
+    geom_col(color = "black", 
+             width = 0.7) +
+
+    geom_text(data = filter(income, 
+                            Percent > 1),
+              aes(label = paste0(round(Percent, 1), "%"), 
+                  y = pos, 
+                  color = text_color), 
+              size = 2.5
+    ) +
+    scale_fill_manual(values = category_colors) +
+    scale_color_manual(values = c("white" = "white", 
+                                  "black" = "black")) +
+
+    coord_flip() +
+    scale_y_continuous(labels = NULL) +
+  
+    annotate("text", 
+             x = c(1, 2.5, 4.5, 6.5), 
+             y = 102, 
+             label = c("Well-To-Do", 
+                       "Comfortable", 
+                       "Fair", 
+                       "Poor"), 
+             size = 2.5, 
+             angle = 90) +
+  
+  labs(
+      x = NULL, 
+      y = NULL, 
+      title = "Annual Expenditure For Provided Data",
+      text_color = NULL
+  ) +
+
+  theme(
+      axis.title = element_blank(),
+      axis.text.y = element_text(face = "bold", 
+                                 size = 8),
+      panel.grid = element_blank(),
+      legend.title = element_blank(),
+      legend.position = "top",
+      plot.title = element_text(hjust = 0.5, margin = margin(b = 10))
+  ) +
+
+  guides(fill = guide_legend(reverse = TRUE), 
+         color = "none")
+
+ggbackground(du_bois, "images/paper.jpg")
 
 ```
 
@@ -22,7 +178,6 @@ toc: true
 ```
 
 ## 3 - COVID survey - reconstruct
-
 
 ## 4 - COVID survey - re-reconstruct
 
