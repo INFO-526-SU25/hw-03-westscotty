@@ -96,7 +96,7 @@ income <- income |>
 
     group_by(ClassLabel) |>
     mutate(pos = cumsum(Percent) - Percent / 2) |>
-    ungroup()
+    ungroup() |> glimpse()
 
 category_colors <- c(
     Rent = "black",
@@ -105,10 +105,6 @@ category_colors <- c(
     Tax = "gray60",
     Other = "tan"
 )
-
-glimpse(income)
-
-
 ```
 
 ```{r recreate_plot_problem1}
@@ -172,12 +168,85 @@ ggbackground(du_bois, "images/paper.jpg")
 
 ## 2 - COVID survey - interpret
 
-```{r}
-#| label: label-me-2
+The first relationship I noticed was the question "Had flu vaccine this year". I am understanding that the error bar lengths for the "No" response seem much longer than those of the "Yes" response for all top level COVID questions. It would be my assumption that those individuals that do not obtain the flu shot likely follow more information on the subject matter of whether or not the COVID vaccine is safe versus not safe. Those that get the flu shot appear to have responses overall that are more centrally located to the means, telling me that they are either not informed or maybe are simply not as concerned with the situation as compared to those that did not get the flu shot.
 
-```
+### Example 2
+
+Looking at the "I trust information that I have received about the vaccines" column has a very small deviation from a localized mean across the board. Every combination appears to have show low confidence, leading to small error bars, with more survey results in the lower values for that question.
+
+### Example 3
+
+Something interesting that I think is quite visible with the provided image is that for the entire set of data, there are 2 question columns that tend to have the most diverse results, meaning the widest spread of answers, or the 10th and 90th percentile bars are on average the longest. The questions are "Based on my understanding, I believe the vaccine is safe" and "I am concerned about the safety and side effects of the vaccine." I would say that these results would directly reflect information (or misinformation) dispersed to the masses. The length of the bars suggest that there are more people on either end of the spectrum for the questions then there are neutral responses.
+
+### Example 4
+
+A final observation I made looking at this dataset involved the age demographic against the "Based on my understanding, I believe the vaccine is safe". There is are large error bars for each age group except the youngest group. I attribute that to simply youth not being as informed relative to the information that is being dispersed. The spread of the survey results for the youth is minimal.
 
 ## 3 - COVID survey - reconstruct
+
+```{r load_data_problem3}
+covid_survey <- read.csv("data/covid-survey.csv")
+
+covid_survey <- covid_survey |> 
+    row_to_names(row_number = 1) |>
+    clean_names() |>
+    mutate(
+        across(everything(), 
+               ~ na_if(., ""))
+    ) |>
+
+    filter(
+        if_any(-response_id, 
+               ~ !is.na(.))
+    ) |> glimpse()
+```
+
+```{r remap_data_problem3}
+covid_survey <- covid_survey |>
+    mutate(
+        response_id = recode(response_id,
+                             "1" ="Yes", 
+                             "0" = "No"),
+        exp_profession = recode(exp_profession,
+                                "1" = "Nursing", 
+                                "0" = "Medical"),
+        exp_gender = recode(exp_gender,
+                            "0" = "Male",
+                            "1" = "Female",
+                            "3" = "Non-binary/Third gender",
+                            "4" = "Prefer not to say"),
+        exp_race = recode(exp_race,
+                          "1" = "American Indian/Alaskan Native",
+                          "2" = "Asian",
+                          "3" = "Black/African American",
+                          "4" = "Native Hawaiian/Other Pacific Islander",
+                          "5" = "White"),
+        exp_ethnicity = recode(exp_ethnicity,
+                               "1" = "Hispanic/Latino",
+                               "2" = "Non-Hispanic/Non-Latino"),
+        exp_age_bin = recode(exp_age_bin,
+                             "0" = "<20",
+                             "20" = "21-25",
+                             "25" = "25-30",
+                             "30" = ">30")
+    
+    ) |> glimpse()
+```
+
+```{r pivot_longer_covid_problem3}
+covid_survey_longer <- covid_survey |>
+    pivot_longer(
+        cols = starts_with("exp_"),
+        names_to = "explanatory",
+        values_to = "explanatory_value"
+    ) |>
+    filter(!is.na(explanatory_value)) |>
+    pivot_longer(
+        cols = starts_with("resp_"),
+        names_to = "response",
+        values_to = "response_value"
+    ) |> glimpse()
+```
 
 ## 4 - COVID survey - re-reconstruct
 
