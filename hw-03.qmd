@@ -4,12 +4,13 @@ author: "Weston Scott"
 format: 
   html:
     embed-resources: true
+    fig-alt: true
 toc: true
 editor:
   render-on-save: true
 execute:
   warning: false
-# bibliography: references.bib
+bibliography: references.bib
 ---
 
 ```{r library_setup, include=FALSE}
@@ -166,19 +167,25 @@ ggbackground(du_bois, "images/paper.jpg")
 
 ```
 
+### Resources
+
+Utilized a few resources to help me understand how to do this [@tidyr_pivot_longer], [@yu_ggbackground_2018].
+
 ## 2 - COVID survey - interpret
+
+### Observation 1
 
 The first relationship I noticed was the question "Had flu vaccine this year". I am understanding that the error bar lengths for the "No" response seem much longer than those of the "Yes" response for all top level COVID questions. It would be my assumption that those individuals that do not obtain the flu shot likely follow more information on the subject matter of whether or not the COVID vaccine is safe versus not safe. Those that get the flu shot appear to have responses overall that are more centrally located to the means, telling me that they are either not informed or maybe are simply not as concerned with the situation as compared to those that did not get the flu shot.
 
-### Example 2
+### Observation 2
 
 Looking at the "I trust information that I have received about the vaccines" column has a very small deviation from a localized mean across the board. Every combination appears to have show low confidence, leading to small error bars, with more survey results in the lower values for that question.
 
-### Example 3
+### Observation 3
 
 Something interesting that I think is quite visible with the provided image is that for the entire set of data, there are 2 question columns that tend to have the most diverse results, meaning the widest spread of answers, or the 10th and 90th percentile bars are on average the longest. The questions are "Based on my understanding, I believe the vaccine is safe" and "I am concerned about the safety and side effects of the vaccine." I would say that these results would directly reflect information (or misinformation) dispersed to the masses. The length of the bars suggest that there are more people on either end of the spectrum for the questions then there are neutral responses.
 
-### Example 4
+### Observation 4
 
 A final observation I made looking at this dataset involved the age demographic against the "Based on my understanding, I believe the vaccine is safe". There is are large error bars for each age group except the youngest group. I attribute that to simply youth not being as informed relative to the information that is being dispersed. The spread of the survey results for the youth is minimal.
 
@@ -301,12 +308,12 @@ covid_survey_summary_stats
 
 ```{r make_labels_problem3}
 response_labels <- c(
-    "resp_safety" = "Based on my understanding, I believe the vaccine is safe",
-    "resp_feel_safe_at_work" = "Getting the vaccine will make me feel safer at work",
-    "resp_concern_safety" = "I am concerned about the safety and side effects of the vaccine",
-    "resp_confidence_science" = "I am confident in the scientific vetting process for the new COVID vaccines",
-    "resp_trust_info" = "I trust the information that I have received about the vaccines",
-    "resp_will_recommend" = "I will recommend the vaccine to family, friends, and community members"
+    "resp_safety" = "Based on my\nunderstanding, I\nbelieve the vaccine\nis safe",
+    "resp_feel_safe_at_work" = "Getting the vaccine\nwill make me feel\nsafer at work",
+    "resp_concern_safety" = "I am concerned\nabout the safety\nand side effects of\nthe vaccine",
+    "resp_confidence_science" = "I am confident in\nthe scientific\nvetting process for\nthe new COVID\nvaccines",
+    "resp_trust_info" = "I trust the\ninformation that I\nhave received about\nthe vaccines",
+    "resp_will_recommend" = "I will recommend\nthe vaccine to\nfamily, friends,\nand community\nmembers"
 )
 
 explanatory_labels <- c(
@@ -340,21 +347,18 @@ ggplot(
         xmax = high)
 ) +
 
-geom_pointrange(size = 0.2) +
+geom_pointrange(size = 0.1) +
 geom_errorbar(
     aes(xmin = low, 
         xmax = high), 
-        size = 0.2, 
-        width = 0.25
+        width = 0.3
 ) +
 
 facet_grid(
     explanatory ~ response, 
     labeller = labeller(
-        explanatory = label_wrap_gen(15,
-                                     multi_line = TRUE),
-        response = label_wrap_gen(15, 
-                                  multi_line = TRUE)
+        explanatory = explanatory_labels,
+        response = response_labels
     ),
     space = "free_y",
     scales = "free_y"
@@ -363,7 +367,7 @@ facet_grid(
 scale_x_continuous(breaks = 1:5, 
                    limits = c(1,5)) +
 
-labs(x = "Mean Likert score (Error bars range from 10th to 90th percentile)",
+labs(x = "Mean Likert score\n(Error bars range from 10th to 90th percentile)",
      y = NULL) +
 
 theme_minimal(base_size = 8) +
@@ -381,6 +385,221 @@ theme(
 coord_cartesian(clip = "off")
 ```
 
+### Resources
+
+Utilized a few resources to help me understand how to do this [@tidyr_pivot_longer], [@yu_ggbackground_2018], [@dplyr_bind_rows], [@ggplot2_geom_linerange], [@gfg_quantiles_by_group_r].
+
 ## 4 - COVID survey - re-reconstruct
 
+```{r quartile_divisions_problem4}
+covid_survey_summary_stats_all_quartile <- covid_survey_longer |>
+    group_by(response) |>
+    summarize(
+        mean = mean(as.numeric(response_value), 
+                    na.rm = TRUE),
+        low  = quantile(as.numeric(response_value), 
+                        probs = 0.25, 
+                        na.rm = TRUE),
+        high = quantile(as.numeric(response_value), 
+                        probs = 0.75, 
+                        na.rm = TRUE),
+        explanatory = "All",
+        explanatory_value = ""
+
+  )
+
+covid_survey_summary_stats_by_group_quartile <- covid_survey_longer |>
+    group_by(explanatory, explanatory_value, response) |>
+    summarize(
+        mean = mean(as.numeric(response_value), 
+                    na.rm = TRUE),
+        low  = quantile(as.numeric(response_value), 
+                        probs = 0.25, 
+                        na.rm = TRUE),
+        high = quantile(as.numeric(response_value), 
+                        probs = 0.75, 
+                        na.rm = TRUE)
+  )
+
+covid_survey_summary_stats_quartile <- bind_rows(
+    covid_survey_summary_stats_all_quartile,
+    covid_survey_summary_stats_by_group_quartile
+) |>
+    mutate(
+        response = factor(response, 
+                          levels = names(response_labels),
+                          labels = unname(response_labels)),
+        explanatory = factor(explanatory, 
+                             levels = names(explanatory_labels),
+                             labels = unname(explanatory_labels))
+    ) 
+
+covid_survey_summary_stats_quartile
+```
+
+```{r make_covid_plot_problem4, fig.width=7, fig.height=8.5}
+ggplot(
+    covid_survey_summary_stats_quartile, 
+    aes(x = mean, 
+        y = explanatory_value, 
+        xmin = low, 
+        xmax = high)
+) +
+
+geom_pointrange(size = 0.1) +
+geom_errorbar(
+    aes(xmin = low, 
+        xmax = high), 
+        width = 0.3
+) +
+
+facet_grid(
+    explanatory ~ response, 
+    labeller = labeller(
+        explanatory = explanatory_labels,
+        response = response_labels
+    ),
+    space = "free_y",
+    scales = "free_y"
+) +
+
+scale_x_continuous(breaks = 1:5, 
+                   limits = c(1,5)) +
+
+labs(x = "Mean Likert score\n(Error bars range from 25th to 75th percentile)",
+     y = NULL) +
+
+theme_minimal(base_size = 8) +
+
+theme(
+    strip.background = element_rect(fill = "gray90", 
+                                    color = 'black', 
+                                    size = 0.3),
+    strip.text.y.right = element_text(angle = 0),
+    panel.grid.major.y = element_blank(),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.x = element_blank(),
+) +
+
+coord_cartesian(clip = "off")
+```
+
+### Resources
+
+Utilized a few resources to help me understand how to do this [@tidyr_pivot_longer], [@yu_ggbackground_2018], [@dplyr_bind_rows], [@ggplot2_geom_linerange], [@gfg_quantiles_by_group_r].
+
+### Conclusions
+
+This new figure with quarter percentiles calculated appears vastly different. By looking at only the middle 50% of the of the responses, the outer extremes that can lengthen the error bars is minimized. Now the error bars all around are much smaller comparatively.
+
+### Observation 1
+
+The error bars a smaller for the responses to the question “Had flu vaccine this year”. The variability in each answer appears less pronounced. The general trend I observed still stands, non-flu-vaccinated individuals seem to be more skeptical but there is less emphasis on response spread.
+
+### Oberservation 2
+
+The error bars for the column "I trust information that I have received about the vaccines” got even smaller, reducing the variability even more, which reinforced the initial observation.
+
+### Oberservation 3
+
+With smaller error bars again the 2 columns “Based on my understanding, I believe the vaccine is safe” and “I am concerned about the safety and side effects of the vaccine” both have reduced variability, which might revise the original observation that the response spectrum is so extreme.
+
 ## 5 - COVID survey - another view
+
+```{r wrangle_data_problem5}
+
+covid_survey_longer
+
+covid_bars <- covid_survey_longer |>
+    filter(response %in% names(response_labels)) |>
+    mutate(
+        response_value = recode(response_value,
+                                "1" = "Strongly Disagree",
+                                "2" = "Disagree",
+                                "3" = "Neutral",
+                                "4" = "Agree",
+                                "5" = "Strongly Agree"),
+        response = factor(response, 
+                          levels = names(response_labels),
+                          labels = unname(response_labels))
+    ) |>
+
+    group_by(response, 
+             response_value) |>
+
+    summarise(n = n(), 
+              .groups = "drop") |>
+
+    group_by(response) |>
+    mutate(
+        percent = n / sum(n) * 100,
+        direction = case_when(response_value %in% c("Strongly Disagree", 
+                                                    "Disagree") ~ "Negative",
+                              response_value == "Neutral" ~ "Neutral",
+                              response_value %in% c("Agree", 
+                                                    "Strongly Agree") ~ "Positive"),
+        percent_adj = case_when(direction == "Negative" ~ -percent,
+                                TRUE ~ percent)
+        )
+
+colorblind_colors = c("#44AA99", "#CC6677", "#DDCC77", "#117733", "#882255")
+```
+
+### Colors
+
+I picked colors (Paul Tol palette) from this website to enhance visualization for colorblindness [@colorblind_palette_tool]
+
+```{r plot_covid_data_problem5a, fig.alt="A diverging bar chart showing six COVID survey questions on the y-axis. Bars extending left represent 'Strongly Disagree' and 'Disagree' responses (with red shades), while bars extending right show 'Neutral', 'Agree', and 'Strongly Agree' responses (with green shades). The length of each bar indicates the percentage of respondents choosing that option."}
+
+ggplot(
+    covid_bars, 
+    aes(x = percent_adj,
+        y = fct_rev(response),
+        fill = response_value)
+) +
+  
+geom_col() +
+scale_fill_manual(values = colorblind_colors) +
+labs(
+    title = "Diverging Bar Chart of COVID Survey Responses",
+    x = "Percentage",
+    y = "Survey Question",
+    fill = "Response"
+) +
+
+theme_minimal()
+```
+
+### Alt Text
+
+A diverging bar chart showing six COVID survey questions on the y-axis. Bars extending left represent 'Strongly Disagree' and 'Disagree' responses (with red shades), while bars extending right show 'Neutral', 'Agree', and 'Strongly Agree' responses (with green shades). The length of each bar indicates the percentage of respondents choosing that option.
+
+```{r plot_covid_data_problem5b, fig.alt="A 100% stacked bar chart with six COVID survey questions on the y-axis. Each horizontal bar sums to 100%, divided into color-coded segments representing 'Strongly Disagree' to 'Strongly Agree'. Red shades indicate disagreement, yellow is neutral, and green shades show agreement. The chart highlights response distribution within each question."}
+
+ggplot(
+    covid_bars, 
+    aes(x = fct_rev(response),
+        y = percent, 
+        fill = response_value)
+) +
+
+geom_col(position = "fill") +
+scale_fill_manual(values = colorblind_colors) +
+labs(
+    title = "100% Stacked Bar Chart of COVID Survey Responses",
+    x = "Survey Question", 
+    y = "Percentage", 
+    fill = "Response"
+) +
+
+coord_flip() +
+theme_minimal()
+```
+
+### Alt Text
+
+A 100% stacked bar chart with six COVID survey questions on the y-axis. Each horizontal bar sums to 100%, divided into color-coded segments representing 'Strongly Disagree' to 'Strongly Agree'. Red shades indicate disagreement, yellow is neutral, and green shades show agreement. The chart highlights response distribution within each question.
+
+### Part C Comparison
+
+Diverging Bar Charts are best for visualizing overall sentiment (positive vs. negative) and the intensity of opinion between questions while the 100% Stacked Bar Charts are good for comparing response patterns within each question, but it’s harder to see if total agreement is higher for one question vs another. I am more familiar with the 100% stacked bar charts, as I prefer to see the full spread that each response covers over the whole data, as opposes to the 'intensity' of opinion that is more prevalent in the diverging bar chart.
